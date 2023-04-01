@@ -1,0 +1,95 @@
+env:
+    name: BoxPushingBinSparse1ReplanProDMP-v0
+    run_mode: sync
+    num_envs: 1
+    seed: 0
+    plot: False
+
+algo:
+    name: target_vpg_dmp
+    push_only: True
+    grasp_only: False
+    n_orientations: 1
+    epsilon: 0.5  # epsilon-greedy exploration
+    epsilon_decay: True
+    discount: 0.5
+    lambda: 0.95
+    clip: 0.2
+    polyak: 0.995
+
+training:
+    epochs: 10000
+    update_freq: 1
+    backbone_params:
+        model: double
+        bilinear: False
+        freeze: False
+        no_depth: True
+        smooth_size: 1
+    critic_opt: SGD
+    critic_opt_params:
+        lr: 0.0001
+        momentum: 0.9
+        weight_decay: 0.0002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 0.995
+    loss: SmoothL1Loss
+    position_neighbourhood: 1
+    adv_loss: False
+    batch_size: 8
+    obs_size: 96
+    buffer_size: 2000
+    cuda: True
+    save_model_freq: 10
+    test_freq: 40
+    test_iter: 20
+    fix_position:
+    optimal_critic: False
+
+policy:
+    mlp_config:
+        hidden_dims: [512, 256, 128, 96]
+        weight_init:
+            name: normal
+            scale: 0.0001
+        normalizer_list: []  # instance_norm, layer_norm, batch_norm, dropout
+        normalizer_kwargs:
+            prob: 0.4
+        activation: relu
+    gaussian:
+        min_std: 0.00001
+        init_std: 1.0
+    entropy_coeff: 1.0
+    backbone_params:
+        model: densenet
+        freeze: False
+    use_env_obs: False
+    robot_state_config:
+        fusion_method:
+        backbone_config:
+            hidden_dims: [16, 32]
+            weight_init:
+                name: normal
+                scale: 0.0001
+            normalizer_list: []
+            normalizer_kwargs:
+                prob: 0.4
+            activation: relu
+    update_iter: 2
+    update_freq: 10
+    opt: Adam
+    opt_params:
+        lr: 0.0001
+        # momentum: 0.9
+        weight_decay: 0.00002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 0.995
+    observation_type: rgbd
+    trust_region_layer:
+        name: wasserstein
+        params:
+            mean_bound: 0.01
+            cov_bound: 0.0001
+            trust_region_coeff: 100

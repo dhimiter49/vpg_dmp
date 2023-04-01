@@ -1,0 +1,43 @@
+env:
+    name: BoxPushingBinSparse10-v0
+    run_mode: async
+    num_envs: 6
+    seed: 0
+    plot: False
+
+algo:
+    name: vpg
+    push_only: False
+    grasp_only: False
+    n_orientations: 16
+    epsilon: 0.5
+    epsilon_decay: True
+    discount: 0.5
+    lambda: 0.95
+    clip: 0.2
+
+training:
+    epochs: 1000
+    update_freq:  10
+    backbone_params:
+        model: densenet
+        bilinear: False
+        freeze: False
+        no_depth: False
+    critic_opt: SGD
+    critic_opt_params:
+        lr: 0.0001
+        momentum: 0.9
+        weight_decay: 0.00002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 1.0
+    loss: SmoothL1Loss
+    adv_loss: False
+    batch_size: 8
+    obs_size: 96
+    buffer_size: 1000000
+    cuda: True
+    save_model_freq: 10
+    test_freq: 40
+    test_iter: 20

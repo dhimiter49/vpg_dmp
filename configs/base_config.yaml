@@ -1,0 +1,88 @@
+env:
+    name: BoxPushingBinSparse10ReplanProDMP-v0
+    run_mode: async  # [async, sync, parallel]
+    num_envs: 6
+    seed: 0
+    plot: False  # debug my ploting the img observations
+
+algo:
+    name: vpg_dmp  # options vpg, vpg_dmp, vpg_policy_dmp
+    push_only: False
+    grasp_only: False
+    n_orientations: 1
+    epsilon: 0.5  # epsilon-greedy exploration
+    epsilon_decay: True
+    discount: 0.5
+    lambda: 0.95
+    clip: 0.2
+
+training:
+    epochs: 10000
+    update_freq: 1000
+    backbone_params:
+        model: unet  # [unet, unet_densenet_enc, densenet] (only densenet for vpg)
+        bilinear: False
+        freeze: False
+        no_depth: False
+    critic_opt: SGD  # [SGD, Adam]
+    critic_opt_params:
+        lr: 0.0001
+        momentum: 0.9  # comment out if Adam is used for optimization
+        weight_decay: 0.00002
+    lr_scheduler:
+        name: ExponentialLR  # see torch.optim.lr_scheduler
+        gamma: 1.0  # for gamma of 1 the lr remains the same, specifiy other params for other schedulers
+    loss: SmoothL1Loss
+    position_neighbourhood: 1
+    adv_loss: False
+    batch_size: 128
+    obs_size: 224
+    buffer_size: 1000000
+    cuda: False
+    save_model_freq: 10
+    test_freq: 40
+    test_iter: 20
+    fix_position:
+    optimal_critic: False
+
+policy:
+    mlp_config:
+        hidden_dims: [512, 256, 128, 96]
+        weight_init:
+            name: normal
+            scale: 0.0001
+        normalizer_list: []  # instance_norm, layer_norm, batch_norm, dropout
+        normalizer_kwargs:
+            prob: 0.4
+        activation: relu
+    gaussian:
+        min_std: 0.00001
+        init_std: 1.0
+    entropy_coeff: 1.0
+    backbone_params:
+        model: densenet  # [densenet, identity], identity -> use only mlp
+        freeze: False
+    use_env_obs: False
+    robot_state_config:
+        fusion_method:
+        backbone_config:
+            hidden_dims: [16, 32]
+            weight_init:
+                name: normal
+                scale: 0.0001
+            normalizer_list: []
+            normalizer_kwargs:
+                prob: 0.4
+            activation: relu
+    update_iter: 80
+    update_freq: 100
+    opt: Adam  # options SGD, Adam
+    opt_params:
+        lr: 0.0001
+        # momentum: 0.9
+        weight_decay: 0.00002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 0.995
+    observation_type: rgbd  # rgbd (joint cam), rgbd_back (joint cam a little back)
+                            # rgbd_crop (crop for critic obs), rgbd_cage (fixed cam)
