@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 import yaml
 import shutil
@@ -50,7 +51,7 @@ def dir_setup(dir_name, config_path):
     Path(experiment_dir).mkdir(parents=True, exist_ok=True)
     Path(buffer_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(config_path, experiment_dir / Path(config_path.split("/")[1]))
-    # os.system("git diff src/ > " + experiment_dir + "/diff")
+    os.system("git diff src/ > " + experiment_dir + "/diff")
 
     return experiment_dir, buffer_dir
 
