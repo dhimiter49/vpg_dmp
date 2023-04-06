@@ -5,7 +5,7 @@ import numpy as np
 
 import nets.rl_nets as nets
 from algos.base import BaseRLAlgo
-# from projections import MAP_TR_LAYER
+from projections import MAP_TR_LAYER
 from utils import plot, rl_func, indexing, track
 
 
@@ -89,9 +89,6 @@ class VPG_DMPAlgo(BaseRLAlgo):
         ).copy())
         rgb = indexing.crop_upsample(rgb, pos, self.obs_size) if pos is not None else rgb
         plot.show_image(rgb[0]) if self.plot else None
-        # print("pol obs")
-        # plot.show_image(rgb[0])
-        # print("pol obs finish")
 
         rgb = (rgb / 255).to(self.device, dtype=torch.float)
         rgb = rgb.permute(0, 3, 1, 2)

@@ -195,7 +195,8 @@ class BaseRLAlgo:
                     traj_ret.mean() if not test else traj_ret.sum() / self.test_iter,
                     self.curr_step - traj_begin,
                     self.init_pos_heatmap, self.init_pos_heatmap_, self.avg_heatmap,
-                    epoch, alias, -(self.test_iter // -self.num_envs) if test else 1,
+                    epoch if not test else init_idx,
+                    alias, -(self.test_iter // -self.num_envs) if test else 1,
                     not test or epoch == epochs - self.num_envs,
                 )
                 if not test and epoch % self.test_freq == 0:
