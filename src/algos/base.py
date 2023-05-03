@@ -193,7 +193,8 @@ class BaseRLAlgo:
                     self.writer,
                     traj_rets,
                     traj_ret.mean() if not test else traj_ret.sum() / self.test_iter,
-                    self.curr_step - traj_begin,
+                    self.curr_step - traj_begin if not test else\
+                        (self.curr_step - traj_begin) * self.num_envs / self.test_iter,
                     self.init_pos_heatmap, self.init_pos_heatmap_, self.avg_heatmap,
                     epoch if not test else init_idx,
                     alias, -(self.test_iter // -self.num_envs) if test else 1,
@@ -202,7 +203,7 @@ class BaseRLAlgo:
                 if not test and epoch % self.test_freq == 0:
                     self.test_training(epoch)  # test while training
                 pbar.update(self.num_envs)
-                traj_begin = self.curr_step
+                traj_begin = self.curr_step if not test else traj_begin
                 traj_ret = 0.0 if not test else traj_ret
                 traj_rets = {} if not test else traj_rets
                 self.env.reset()

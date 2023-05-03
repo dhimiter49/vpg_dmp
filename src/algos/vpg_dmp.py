@@ -36,12 +36,14 @@ class VPG_DMPAlgo(BaseRLAlgo):
                 robot_state_dim=robot_state_dim,
             )
         self.use_env_obs = config["policy"]["use_env_obs"]
+        obs_space = self.env.observation_space.shape[-1]
+        obs_space -= 1 if "ProDMP" in config["env"]["name"] else 0
         self.policy = nets.GaussianPolicy(
             mlp_config=config["policy"]["mlp_config"],
             obs_dim=3 * self.obs_size ** 2,
             weight_vec_dim=self.action_space,
             backbone_params=config["policy"]["backbone_params"],
-            env_obs=self.env.observation_space.shape[-1] - 1\
+            env_obs=obs_space\
                 if self.use_env_obs else None,
             robot_state_config=config["policy"]["robot_state_config"],
             robot_state_dim=robot_state_dim,
