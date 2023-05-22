@@ -1,0 +1,96 @@
+env:
+    name: BoxPushingBinDense1-v0
+    run_mode: async
+    num_envs: 4
+    seed: 0
+    plot: False
+
+algo:
+    name: vpg_ppo
+    push_only: True
+    grasp_only: False
+    n_orientations: 1
+    epsilon: 0.5  # epsilon-greedy exploration
+    epsilon_decay: True
+    discount: 0.9
+    lambda: 0.95
+    clip: 0.3
+    traj_steps: 100
+
+training:
+    epochs: 100000
+    update_freq: 20
+    backbone_params:
+        model: unet_densenet_enc
+        bilinear: False
+        freeze: True
+        no_depth: True
+        smooth_size: 11
+    critic_opt: Adam
+    critic_opt_params:
+        lr: 0.0001
+        # momentum: 0.9
+        weight_decay: 0.0002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 0.995
+    loss: SmoothL1Loss
+    position_neighbourhood: 1
+    adv_loss: False
+    batch_size: 32
+    obs_size: 224
+    buffer_size: 10000
+    cuda: True
+    save_model_freq: 10
+    test_freq: 200
+    test_iter: 30
+    fix_position: [156, 159]
+    train_critic: True
+    optimal_critic: False
+
+policy:
+    mlp_config:
+        hidden_dims: [64, 16]
+        weight_init:
+            name: normal
+            scale: 0.0001
+        normalizer_list: []  # instance_norm, layer_norm, batch_norm, dropout
+        normalizer_kwargs:
+            prob: 0.4
+        activation: relu
+    gaussian:
+        min_std: 0.0000001
+        init_std: 0.05
+    entropy_coeff: 0.1
+    backbone_params:
+        model: densenet
+        freeze: True
+    use_env_obs: False
+    robot_state_config:
+        fusion_method:
+        backbone_config:
+            hidden_dims: [16, 32]
+            weight_init:
+                name: normal
+                scale: 0.0001
+            normalizer_list: []
+            normalizer_kwargs:
+                prob: 0.4
+            activation: relu
+    update_iter: 10
+    update_freq: 10
+    opt: Adam
+    opt_params:
+        lr: 0.0001
+        # momentum: 0.9
+        weight_decay: 0.00002
+    lr_scheduler:
+        name: ExponentialLR
+        gamma: 0.995
+    observation_type: rgbd
+    trust_region_layer:
+        name: # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
+        params:
+            mean_bound: 0.05
+            cov_bound: 0.00005
+            trust_region_coeff: 25
