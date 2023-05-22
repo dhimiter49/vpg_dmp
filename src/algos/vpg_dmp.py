@@ -36,7 +36,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
                 robot_state_dim=robot_state_dim,
             )
         self.use_env_obs = config["policy"]["use_env_obs"]
-        obs_space = self.env.observation_space.shape[-1] - 1
+        obs_space = self.env.observation_space.shape[-1] - 1  # remove time (no replan)
         self.policy = nets.GaussianPolicy(
             mlp_config=config["policy"]["mlp_config"],
             obs_dim=3 * self.obs_size ** 2,

@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 from algos.vpg import VPGAlgo
+from algos.ppo import PPOAlgo
 from algos.vpg_dmp import (
     VPG_DMPAlgo,
     VPG_Policy_DMPAlgo,
@@ -19,6 +20,7 @@ import warnings
 ALGO = {
     "vpg": VPGAlgo,
     "vpg_dmp": VPG_DMPAlgo,
+    "vpg_ppo": PPOAlgo,
     "vpg_policy_dmp": VPG_Policy_DMPAlgo,
     "double_vpg_dmp": DoubleVPG_DMPAlgo,
     "target_vpg_dmp": TargetVPG_DMPAlgo,

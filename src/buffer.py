@@ -24,6 +24,7 @@ class ReplayBuffer:
         self.buffer_dir = buffer_dir
         self.obs_size = obs_size
         self.num_envs = num_envs
+        self.pol_rgb_obs = True
         self.algo = "vpg"
         self.action_idxs = np.empty((size, self.num_envs), dtype=int)
         self.rewards = np.empty((size, self.num_envs), dtype=np.float32)
@@ -37,6 +38,7 @@ class ReplayBuffer:
         self.dones = np.empty((size, self.num_envs), dtype=bool)
         self.file_name = lambda alias, i: self.buffer_dir + alias + "_" + str(i) + ".npy"
         self.traj_len = 1000  # will be overwritten by the policy
+        self.traj_steps = 1
         self.ptr, self.size, self.current_size, self.last_sampled_idxs = 0, size, 0, []
 
     def init_policy_vars(
@@ -45,8 +47,11 @@ class ReplayBuffer:
         algo="vpg_dmp",
         tr_layer=False,
         robot_state_dim=None,
+        pol_env_obs=None,
+        traj_steps=1,
     ):
         self.algo = algo
+        self.traj_steps = traj_steps
         if self.algo == "vpg_policy_dmp":
             self.__dict__.pop("expected_rewards", None)
         self.__dict__.pop("orientations", None)
@@ -65,6 +70,11 @@ class ReplayBuffer:
             self.robot_states = np.empty(
                 (self.size, self.num_envs, robot_state_dim), dtype=np.float32
             )
+        if pol_env_obs is not None:
+            self.pol_rgb_obs = False
+            self.pol_obs = np.empty(
+                (self.size, self.num_envs, pol_env_obs), dtype=np.float32
+            )
 
     def store(self, rgb_obs, depth_obs, a, p, o, r, r_, r__, r___, d, info=None):
         assert rgb_obs.shape[1:] == (3, self.obs_size, self.obs_size)
@@ -73,25 +83,32 @@ class ReplayBuffer:
         np.save(self.file_name("rgb", self.ptr), rgb_obs)
         np.save(self.file_name("depth", self.ptr), depth_obs)
         self.action_idxs[self.ptr] = a
-        self.rewards[self.ptr] = r
+        self.rewards[self.ptr:self.ptr + self.traj_steps] = r
         self.pred_rewards[self.ptr] = r__
         self.pixel_pos_rewards[self.ptr] = r___
         self.init_positions[self.ptr] = np.array(p)
-        self.dones[self.ptr] = d
+        self.dones[self.ptr:self.ptr + self.traj_steps] = d
         if self.algo != "vpg":
-            np.save(self.file_name("pol_rgb", self.ptr), info["rgb"])
-            self.logps[self.ptr] = info["logp"]
-            self.actions[self.ptr] = info["action"]
+            if self.pol_rgb_obs:
+                if self.traj_steps == 1:
+                    np.save(self.file_name("pol_rgb", self.ptr), info["rgb"])
+                else:
+                    for i in range(self.traj_steps):
+                        np.save(self.file_name("pol_rgb", self.ptr + i), info["rgb"][i])
+            else:
+                self.pol_obs[self.ptr:self.ptr + self.traj_steps] = info["rgb"]
+            self.logps[self.ptr:self.ptr + self.traj_steps] = info["logp"]
+            self.actions[self.ptr:self.ptr + self.traj_steps] = info["action"]
             if "mean" in info:
-                self.means[self.ptr] = info["mean"]
-                self.stds[self.ptr] = info["std"]
+                self.means[self.ptr:self.ptr + self.traj_steps] = info["mean"]
+                self.stds[self.ptr:self.ptr + self.traj_steps] = info["std"]
         if self.algo == "vpg":
             self.orientations[self.ptr] = o
         if self.algo != "vpg_policy_dmp":
             self.expected_rewards[self.ptr] = r_
         if hasattr(self, 'robot_states'):
-            self.robot_states[self.ptr] = info["robot_state"]
-        self.ptr = (self.ptr + 1) % self.size
+            self.robot_states[self.ptr:self.ptr + self.traj_steps] = info["robot_state"]
+        self.ptr = (self.ptr + self.traj_steps) % self.size
         self.current_size = min(self.current_size + 1, self.size)
 
     def sample_batch(
@@ -144,27 +161,35 @@ class ReplayBuffer:
         if len(idxs) == 0:
             return {}
 
-        rgb_obs = [np.load(self.file_name("rgb", i)) for i in idxs]
-        depth_obs = [np.load(self.file_name("depth", i)) for i in idxs]
+        # get beginning of trajecotry indexes, relevant for VF update
+        traj_idxs = idxs - np.remainder(idxs, self.traj_steps)
+        rgb_obs = [np.load(self.file_name("rgb", i)) for i in traj_idxs]
+        depth_obs = [np.load(self.file_name("depth", i)) for i in traj_idxs]
         if policy_sample:
-            pol_rgb_obs = [np.load(self.file_name("pol_rgb", i)) for i in idxs]
+            if self.pol_rgb_obs:
+                pol_rgb_obs = np.concatenate(
+                    [np.load(self.file_name("pol_rgb", i)) for i in idxs]
+                )
+            else:
+                pol_rgb_obs = self.pol_obs[idxs].reshape(-1, *self.pol_obs.shape[-1:])
+
 
         self.last_sampled_idxs = idxs
         return dict(
             rgb = np.concatenate(rgb_obs),
             depth = np.concatenate(depth_obs),
-            a_idx = self.action_idxs[idxs].flatten(),
-            init_pos = self.init_positions[idxs].reshape(-1, 3),  # batch, xyz
-            orient_idx = self.orientations[idxs].flatten()\
+            a_idx = self.action_idxs[traj_idxs].flatten(),
+            init_pos = self.init_positions[traj_idxs].reshape(-1, 3),  # batch, xyz
+            orient_idx = self.orientations[traj_idxs].flatten()\
                 if self.algo == "vpg" else np.array([]),
             ret = self.rewards[idxs],
-            pixel_pos_ret = self.pixel_pos_rewards[idxs],
-            pred_ret = self.pred_rewards[idxs],
-            exp_ret = self.expected_rewards[idxs].flatten()\
+            pixel_pos_ret = self.pixel_pos_rewards[traj_idxs],
+            pred_ret = self.pred_rewards[traj_idxs],
+            exp_ret = self.expected_rewards[traj_idxs].flatten()\
                 if self.algo != "vpg_policy_dmp" else np.array([]),
             dones = self.dones[idxs],
             # leave out last trajectory since this can't be used for updatee
-            pol_rgb = np.concatenate(pol_rgb_obs) if policy_sample else np.array([]),
+            pol_rgb = pol_rgb_obs if policy_sample else np.array([]),
             actions = self.actions[idxs].reshape(-1, *self.actions.shape[-1:])\
                 if policy_sample else np.array([]),
             means = self.means[idxs].reshape(-1, *self.means.shape[-1:])\
