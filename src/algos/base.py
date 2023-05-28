@@ -57,6 +57,7 @@ class BaseRLAlgo:
         self.env = getattr(
             env_mode, config["env"]["run_mode"].capitalize() + "BoxPushingBinEnv"
         )(env_fns)
+        self.env.seed()
         torch.set_num_threads(os.cpu_count())
         self.action_space = self.env.action_space.shape[-1]
         self.pos_neigh = config["training"]["position_neighbourhood"]
