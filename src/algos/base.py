@@ -405,7 +405,7 @@ class BaseRLAlgo:
                 logp_old=torch.from_numpy(samples["logps"]).to(self.device),
                 robot_states=torch.from_numpy(samples["robot_states"]).to(self.device),
                 dones=torch.from_numpy(samples["dones"]).to(self.device, dtype=int),
-                pol_rgb=torch.from_numpy(samples["pol_rgb"]).to(self.device),
+                pol_obs=torch.from_numpy(samples["pol_obs"]).to(self.device),
                 new_pred_ret=True,
             )
 
