@@ -24,7 +24,7 @@ class ReplayBuffer:
         self.buffer_dir = buffer_dir
         self.obs_size = obs_size
         self.num_envs = num_envs
-        self.pol_rgb_obs = True
+        self.pol_obs = True
         self.algo = "vpg"
         self.action_idxs = np.empty((size, self.num_envs), dtype=int)
         self.rewards = np.empty((size, self.num_envs), dtype=np.float32)
@@ -71,7 +71,7 @@ class ReplayBuffer:
                 (self.size, self.num_envs, robot_state_dim), dtype=np.float32
             )
         if pol_env_obs is not None:
-            self.pol_rgb_obs = False
+            self.pol_obs = False
             self.pol_obs = np.empty(
                 (self.size, self.num_envs, pol_env_obs), dtype=np.float32
             )
@@ -89,14 +89,16 @@ class ReplayBuffer:
         self.init_positions[self.ptr] = np.array(p)
         self.dones[self.ptr:self.ptr + self.traj_steps] = d
         if self.algo != "vpg":
-            if self.pol_rgb_obs:
+            if self.pol_obs:
                 if self.traj_steps == 1:
-                    np.save(self.file_name("pol_rgb", self.ptr), info["rgb"])
+                    np.save(self.file_name("pol_obs", self.ptr), info["pol_obs"])
                 else:
                     for i in range(self.traj_steps):
-                        np.save(self.file_name("pol_rgb", self.ptr + i), info["rgb"][i])
+                        np.save(
+                            self.file_name("pol_obs", self.ptr + i), info["pol_obs"][i]
+                        )
             else:
-                self.pol_obs[self.ptr:self.ptr + self.traj_steps] = info["rgb"]
+                self.pol_obs[self.ptr:self.ptr + self.traj_steps] = info["pol_obs"]
             self.logps[self.ptr:self.ptr + self.traj_steps] = info["logp"]
             self.actions[self.ptr:self.ptr + self.traj_steps] = info["action"]
             if "mean" in info:
@@ -166,12 +168,12 @@ class ReplayBuffer:
         rgb_obs = [np.load(self.file_name("rgb", i)) for i in traj_idxs]
         depth_obs = [np.load(self.file_name("depth", i)) for i in traj_idxs]
         if policy_sample:
-            if self.pol_rgb_obs:
-                pol_rgb_obs = np.concatenate(
-                    [np.load(self.file_name("pol_rgb", i)) for i in idxs]
+            if self.pol_obs:
+                pol_obs = np.concatenate(
+                    [np.load(self.file_name("pol_obs", i)) for i in idxs]
                 )
             else:
-                pol_rgb_obs = self.pol_obs[idxs].reshape(-1, *self.pol_obs.shape[-1:])
+                pol_obs = self.pol_obs[idxs].reshape(-1, *self.pol_obs.shape[-1:])
 
 
         self.last_sampled_idxs = idxs
@@ -189,7 +191,7 @@ class ReplayBuffer:
                 if self.algo != "vpg_policy_dmp" else np.array([]),
             dones = self.dones[idxs],
             # leave out last trajectory since this can't be used for updatee
-            pol_rgb = pol_rgb_obs if policy_sample else np.array([]),
+            pol_obs = pol_obs if policy_sample else np.array([]),
             actions = self.actions[idxs].reshape(-1, *self.actions.shape[-1:])\
                 if policy_sample else np.array([]),
             means = self.means[idxs].reshape(-1, *self.means.shape[-1:])\

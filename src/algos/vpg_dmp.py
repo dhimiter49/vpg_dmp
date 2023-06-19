@@ -129,7 +129,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
             )
         obs, ret, done, info = self.env.step(weight_vec.detach().cpu().numpy())
         info["logp"] = logp_weight_vec.detach().cpu().numpy()
-        info["rgb"] = pol_obs.cpu().numpy()
+        info["pol_obs"] = pol_obs.cpu().numpy()
         info["action"] = weight_vec.detach().cpu().numpy()
         info["robot_state"] = robot_state.cpu().numpy()
         if self.use_tr_layer:
@@ -159,12 +159,12 @@ class VPG_DMPAlgo(BaseRLAlgo):
         )
 
     def compute_policy_loss(
-        self, pol_rgb, logp_old, old_means, old_stds, actions, adv, robot_states
+        self, pol_obs, logp_old, old_means, old_stds, actions, adv, robot_states
     ):
         loss, entropy_loss, trust_region_loss =\
             0.0, torch.Tensor([0.0]), torch.Tensor([0.0])
         if self.use_tr_layer:
-            _, _, means, stds = self.policy(pol_rgb, robot_states)
+            _, _, means, stds = self.policy(pol_obs, robot_states)
             proj_p, trust_region_loss, entropy_loss = self.project(
                 (means, stds),
                 (old_means, old_stds),
@@ -173,7 +173,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
             loss = rl_func.clip_IS_loss(logp, logp_old, adv, self.clip) +\
                 entropy_loss + trust_region_loss
         else:
-            _, logp, means, stds = self.policy(pol_rgb, robot_states, a=actions)
+            _, logp, means, stds = self.policy(pol_obs, robot_states, a=actions)
             loss = rl_func.clip_IS_loss(logp, logp_old, adv, self.clip)
         return loss, logp, entropy_loss, trust_region_loss
 
@@ -185,7 +185,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
         actions=None, old_means=None, old_stds=None, robot_states=None,
         logp_old=None,
         dones=None,
-        pol_rgb=None,
+        pol_obs=None,
         new_pred_ret=False,
     ):
         """
@@ -209,7 +209,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
                 )
                 self.policy_opt.zero_grad()
                 loss, logp, ent_loss, tr_loss = self.compute_policy_loss(
-                    pol_rgb[idxs],
+                    pol_obs[idxs],
                     logp_old[idxs],
                     old_means[idxs] if self.use_tr_layer else None,
                     old_stds[idxs] if self.use_tr_layer else None,
@@ -452,7 +452,7 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
         actions=None, old_means=None, old_stds=None, robot_states=None,
         logp_old=None,
         dones=None,
-        pol_rgb=None,
+        pol_obs=None,
         **args
     ):
         pix_pol_losses, pix_pol_ent_losses, pol_losses, pol_ent_losses, pol_tr_losses =\
@@ -493,7 +493,7 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
 
                 self.policy_opt.zero_grad()
                 loss, logp, ent_loss, tr_loss = self.compute_policy_loss(
-                    pol_rgb[idxs],
+                    pol_obs[idxs],
                     logp_old[idxs],
                     old_means[idxs] if self.use_tr_layer else None,
                     old_stds[idxs] if self.use_tr_layer else None,
