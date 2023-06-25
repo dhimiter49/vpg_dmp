@@ -24,7 +24,7 @@ class ReplayBuffer:
         self.buffer_dir = buffer_dir
         self.obs_size = obs_size
         self.num_envs = num_envs
-        self.pol_obs = True
+        self.rgb_pol_obs = True
         self.algo = "vpg"
         self.action_idxs = np.empty((size, self.num_envs), dtype=int)
         self.rewards = np.empty((size, self.num_envs), dtype=np.float32)
@@ -71,7 +71,7 @@ class ReplayBuffer:
                 (self.size, self.num_envs, robot_state_dim), dtype=np.float32
             )
         if pol_env_obs is not None:
-            self.pol_obs = False
+            self.rgb_pol_obs = False
             self.pol_obs = np.empty(
                 (self.size, self.num_envs, pol_env_obs), dtype=np.float32
             )
@@ -89,7 +89,7 @@ class ReplayBuffer:
         self.init_positions[self.ptr] = np.array(p)
         self.dones[self.ptr:self.ptr + self.traj_steps] = d
         if self.algo != "vpg":
-            if self.pol_obs:
+            if self.rgb_pol_obs:
                 if self.traj_steps == 1:
                     np.save(self.file_name("pol_obs", self.ptr), info["pol_obs"])
                 else:
@@ -168,7 +168,7 @@ class ReplayBuffer:
         rgb_obs = [np.load(self.file_name("rgb", i)) for i in traj_idxs]
         depth_obs = [np.load(self.file_name("depth", i)) for i in traj_idxs]
         if policy_sample:
-            if self.pol_obs:
+            if self.rgb_pol_obs:
                 pol_obs = np.concatenate(
                     [np.load(self.file_name("pol_obs", i)) for i in idxs]
                 )

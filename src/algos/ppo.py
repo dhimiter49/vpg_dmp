@@ -127,7 +127,7 @@ class PPOAlgo(BaseRLAlgo):
             pol_obs = self.get_policy_obs()
 
         info_ = {
-            "logp": [], "rgb": [], "action": [], "robot_state": [], "std":[],
+            "logp": [], "pol_obs": [], "action": [], "robot_state": [], "std":[],
             "reward_info": []
         }
         if self.use_tr_layer:
@@ -142,7 +142,7 @@ class PPOAlgo(BaseRLAlgo):
                 )
             obs, ret, done, info = self.env.step(weight_vec.detach().cpu().numpy())
             info_["logp"].append(logp_weight_vec.detach().cpu().numpy())
-            info_["rgb"].append(pol_obs.cpu().numpy())
+            info_["pol_obs"].append(pol_obs.cpu().numpy())
             info_["action"].append(weight_vec.detach().cpu().numpy())
             info_["robot_state"].append(robot_state.cpu().numpy())
             if self.use_tr_layer:
