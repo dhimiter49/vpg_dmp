@@ -212,7 +212,7 @@ class PPOAlgo(BaseRLAlgo):
                     self.policy.entropy((old_means, old_stds)).mean()
             for i in range(self.policy_update_iter):
                 idxs = np.random.choice(
-                    np.arange(self.policy_update_freq * self.num_envs),
+                    np.arange(self.policy_update_freq * self.num_envs * self.traj_steps),
                     self.batch_size,
                     replace=False
                 )

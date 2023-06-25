@@ -440,7 +440,11 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
             self.pixel_policy_opt = self.critic_opt
             self.pixel_policy_scheduler = self.critic_opt_scheduler
             self.buffer.init_policy_vars(
-                self.action_space, algo="vpg_policy_dmp", tr_layer=self.use_tr_layer
+                self.action_space,
+                algo="vpg_policy_dmp",
+                tr_layer=self.use_tr_layer,
+                pol_env_obs=self.env.observation_space.shape[-1] - 1 \
+                    if self.use_env_obs else None,
             )
         self.update_freq = lambda : (self.curr_step + 1) % self.policy_update_freq == 0
 

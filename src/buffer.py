@@ -139,7 +139,9 @@ class ReplayBuffer:
 
         valid_idxs = np.arange(self.current_size)
         if policy_sample:
-            valid_idxs = np.arange(self.ptr - self.policy_traj_len, self.ptr) % self.size
+            valid_idxs = np.arange(
+                self.ptr - self.policy_traj_len * self.traj_steps, self.ptr
+            ) % self.size
 
         if reward is not None:
             valid_idxs = np.intersect1d(valid_idxs, np.where(self.rewards == reward)[0])
