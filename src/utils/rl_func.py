@@ -123,8 +123,7 @@ def discounted_returns(returns, dones, gamma):
     disc_ret, terminal = returns, 1 - dones
     for i, step_ret in enumerate(torch.flip(returns[:-1], [0])):
         disc_ret[- i - 2] = step_ret + terminal[- i - 2] * gamma * disc_ret[- i - 1]
-    disc_ret = disc_ret.flatten()
-    return (disc_ret - disc_ret.mean()) / (disc_ret.std() + 1e-8)
+    return disc_ret.flatten()
 
 
 def get_prob_at_pos(val_heatmap, pos):
