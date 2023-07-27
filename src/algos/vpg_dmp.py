@@ -1,6 +1,5 @@
 import copy
 import torch
-import torch.nn.functional as F
 import numpy as np
 
 import nets.rl_nets as nets
@@ -66,8 +65,8 @@ class VPG_DMPAlgo(BaseRLAlgo):
                     self.policy_opt, **config["policy"]["lr_scheduler"]
             )
             self.policy_update_freq = config["policy"]["update_freq"]
-            self.update_freq = lambda : (
-                (self.curr_step + 1) % self.critic_update_freq == 0 or\
+            self.update_freq = lambda: (
+                (self.curr_step + 1) % self.critic_update_freq == 0 or
                 (self.curr_step + 1) % self.policy_update_freq == 0
             )
             self.buffer.policy_traj_len = self.policy_update_freq
@@ -89,7 +88,8 @@ class VPG_DMPAlgo(BaseRLAlgo):
             camera_name="rgbd" if self.policy_cam == "rgbd_crop" else self.policy_cam
         ).copy())
         rgb = indexing.crop_upsample(rgb, pos, self.obs_size) if pos is not None else rgb
-        plot.show_image(rgb[0]) if self.plot else None
+        if self.plot:
+            plot.show_image(rgb[0])
 
         rgb = (rgb / 255).to(self.device, dtype=torch.float)
         rgb = rgb.permute(0, 3, 1, 2)

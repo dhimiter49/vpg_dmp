@@ -46,18 +46,29 @@ class BaseRLAlgo:
         self.grasp_only = config["algo"]["grasp_only"]
         self.num_envs = config["env"]["num_envs"]
         self.plot = config["env"]["plot"]
-        seeds = np.random.choice([i for i in range(1000)], self.num_envs, replace=False)
-        env_fns = [lambda: fancy_gym.make(
-            config["env"]["name"],
-            seed=int(seeds[i]),
-            width=self.obs_size,
-            height=self.obs_size,
-        ) for i in range(self.num_envs)]
-        torch.set_num_threads(1) if config["env"]["run_mode"] == "async" else None
-        self.env = getattr(
-            env_mode, config["env"]["run_mode"].capitalize() + "BoxPushingBinEnv"
-        )(env_fns)
-        self.env.seed()
+        seeds = np.random.choice(list(range(1000)), self.num_envs, replace=False)
+        torch.set_num_threads(1)
+        if config["env"]["run_mode"] == "SLAsync":
+            env_fns = [env_mode.make_slasync_env(
+                config["env"]["name"],
+                seed=int(seeds[i]),
+                width=self.obs_size,
+                height=self.obs_size,
+            ) for i in range(self.num_envs)]
+            self.env = getattr(
+                env_mode, config["env"]["run_mode"] + "BoxPushingBinEnv"
+            )(env_fns)
+        else:
+            env_fns = [lambda: fancy_gym.make(
+                config["env"]["name"],
+                seed=int(seeds[i]),
+                width=self.obs_size,
+                height=self.obs_size,
+            ) for i in range(self.num_envs)]
+            self.env = getattr(
+                env_mode, config["env"]["run_mode"].capitalize() + "BoxPushingBinEnv"
+            )(env_fns)
+            self.env.seed()
         torch.set_num_threads(os.cpu_count())
         self.action_space = self.env.action_space.shape[-1]
         self.pos_neigh = config["training"]["position_neighbourhood"]

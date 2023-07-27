@@ -1,6 +1,6 @@
 env:
     name: BoxPushingBinSparse10ReplanProDMP-v0
-    run_mode: async  # [async, sync, parallel]
+    run_mode: async  # [async, sync, parallel, SLAsync]
     num_envs: 6
     seed: 0
     plot: False  # debug my ploting the img observations
