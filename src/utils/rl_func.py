@@ -137,5 +137,8 @@ def get_prob_at_pos(val_heatmap, pos):
     assert len(val_heatmap) == len(pos)
     pixel_pos_prob = torch.empty(len(pos)).to(device=val_heatmap.device)
     for i, h in enumerate(val_heatmap):
-        pixel_pos_prob[i] = h[0, 0, int(pos[i, 0]), int(pos[i, 1])]
+        if len(pos.shape) == 2:
+            pixel_pos_prob[i] = h[0, 0, int(pos[i, 0]), int(pos[i, 1])]
+        else:
+            pixel_pos_prob[i] = h[0, 0, int(pos[i])]
     return pixel_pos_prob

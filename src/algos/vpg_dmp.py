@@ -109,8 +109,14 @@ class VPG_DMPAlgo(BaseRLAlgo):
             - reset robot position to initial position
             - get next observation
         """
-        world_point = self.env.pos_behind_box() if self.optimal_critic\
-            else self.env.img_to_world(init_pos)
+        if self.optimal_critic:
+            world_point = self.env.pos_behind_box()
+        if isinstance(self, VPGFixed_Policy_DMPAlgo):
+            world_point = self.env.pos_behind_box(
+                init_pos, total_pos=np.array([self.num_positions] * len(init_pos))
+            )
+        else:
+            world_point = self.env.img_to_world(init_pos)
         if self.plot:
             plot.plot_step_obs(
                 self.env.envs[0], self.obs_size, init_pos[0], world_point[0]
@@ -428,12 +434,14 @@ class TargetVPG_DMPAlgo(DoubleVPG_DMPAlgo):
 
 
 class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
-    def __init__(self, config, experiment_dir, buffer_dir, test):
+    def __init__(
+        self, config, experiment_dir, buffer_dir, test, critic_name="PixelPolicy"
+    ):
         """
         VPG is adapted to a policy instead of a critic, resulting in effectively a two
         step policy with a REAINFORCE based update.
         """
-        super().__init__(config, experiment_dir, buffer_dir, test, "PixelPolicy")
+        super().__init__(config, experiment_dir, buffer_dir, test, critic_name)
         self.pixel_policy = self.critic
         self.train_critic = config["training"]["train_critic"]
         if not self.testing:
@@ -524,3 +532,36 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
             "policy_ent_loss": float(np.mean(pol_ent_losses)),
             "policy_tr_loss": float(np.mean(pol_tr_losses))
         }
+
+
+class VPGFixed_Policy_DMPAlgo(VPG_Policy_DMPAlgo):
+    def __init__(self, config, experiment_dir, buffer_dir, test):
+        super().__init__(
+            config,
+            experiment_dir,
+            buffer_dir,
+            test,
+            critic_name="VPGFixedPosition_DMPCritic",
+        )
+        self.num_positions = config["training"]["backbone_params"]["num_positions"]
+        self.buffer.init_positions = np.expand_dims(
+            self.buffer.init_positions[:, :, 0], -1
+        )
+
+    def get_action(self, val_heatmap, depth):
+        pred_ret, pos, a_idx, orient_idx = [], [], [], []
+        val_heatmap = val_heatmap.squeeze(-1)
+        for h in val_heatmap:
+            idxs = indexing.unravel_index(rl_func.critic_decision(h, "categorical"), h)
+            p, o = int(idxs[-1]), idxs[1]
+            pred_ret.append(
+                h[:, :, p].detach().cpu().numpy().reshape(self.pos_neigh, self.pos_neigh)
+            )
+            pos.append(p)
+            orient_idx.append(o)
+            if np.random.uniform() > self.eps:
+                a_idx.append(idxs[0])
+            else:
+                a_idx.append(np.random.randint(0, self.n_primitives))
+        pos = np.expand_dims(pos, -1)
+        return np.array(pos), np.array(a_idx), np.array(orient_idx), np.array(pred_ret)

@@ -11,6 +11,7 @@ from algos.ppo import PPOAlgo
 from algos.vpg_dmp import (
     VPG_DMPAlgo,
     VPG_Policy_DMPAlgo,
+    VPGFixed_Policy_DMPAlgo,
     DoubleVPG_DMPAlgo,
     TargetVPG_DMPAlgo
 )
@@ -22,6 +23,7 @@ ALGO = {
     "vpg_dmp": VPG_DMPAlgo,
     "vpg_ppo": PPOAlgo,
     "vpg_policy_dmp": VPG_Policy_DMPAlgo,
+    "vpg_fixed_policy_dmp": VPGFixed_Policy_DMPAlgo,
     "double_vpg_dmp": DoubleVPG_DMPAlgo,
     "target_vpg_dmp": TargetVPG_DMPAlgo,
 }
