@@ -42,7 +42,7 @@ class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
     def pos_behind_box(self, pos=None, total_pos=1):
         return np.array(self.call(
             name="pos_behind_box",
-            batch=True,
+            batch=False if pos is None else True,
             pos=pos,
             total_pos=total_pos,
         ))

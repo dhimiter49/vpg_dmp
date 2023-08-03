@@ -111,7 +111,7 @@ class VPG_DMPAlgo(BaseRLAlgo):
         """
         if self.optimal_critic:
             world_point = self.env.pos_behind_box()
-        if isinstance(self, VPGFixed_Policy_DMPAlgo):
+        elif isinstance(self, VPGFixed_Policy_DMPAlgo):
             world_point = self.env.pos_behind_box(
                 init_pos, total_pos=np.array([self.num_positions] * len(init_pos))
             )
