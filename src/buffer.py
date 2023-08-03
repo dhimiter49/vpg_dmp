@@ -177,31 +177,32 @@ class ReplayBuffer:
             else:
                 pol_obs = self.pol_obs[idxs].reshape(-1, *self.pol_obs.shape[-1:])
 
-
         self.last_sampled_idxs = idxs
         return dict(
-            rgb = np.concatenate(rgb_obs),
-            depth = np.concatenate(depth_obs),
-            a_idx = self.action_idxs[traj_idxs].flatten(),
-            init_pos = self.init_positions[traj_idxs].reshape(-1, 3),  # batch, xyz
-            orient_idx = self.orientations[traj_idxs].flatten()\
+            rgb=np.concatenate(rgb_obs),
+            depth=np.concatenate(depth_obs),
+            a_idx=self.action_idxs[traj_idxs].flatten(),
+            init_pos=self.init_positions[traj_idxs].reshape(
+                -1, self.init_positions.shape[-1]
+            ),  # batch, xyz
+            orient_idx=self.orientations[traj_idxs].flatten()\
                 if self.algo == "vpg" else np.array([]),
-            ret = self.rewards[idxs],
-            pixel_pos_ret = self.pixel_pos_rewards[traj_idxs],
-            pred_ret = self.pred_rewards[traj_idxs],
-            exp_ret = self.expected_rewards[traj_idxs].flatten()\
+            ret=self.rewards[idxs],
+            pixel_pos_ret=self.pixel_pos_rewards[traj_idxs],
+            pred_ret=self.pred_rewards[traj_idxs],
+            exp_ret= self.expected_rewards[traj_idxs].flatten()\
                 if self.algo != "vpg_policy_dmp" else np.array([]),
-            dones = self.dones[idxs],
+            dones=self.dones[idxs],
             # leave out last trajectory since this can't be used for updatee
-            pol_obs = pol_obs if policy_sample else np.array([]),
-            actions = self.actions[idxs].reshape(-1, *self.actions.shape[-1:])\
+            pol_obs=pol_obs if policy_sample else np.array([]),
+            actions=self.actions[idxs].reshape(-1, *self.actions.shape[-1:])\
                 if policy_sample else np.array([]),
-            means = self.means[idxs].reshape(-1, *self.means.shape[-1:])\
+            means=self.means[idxs].reshape(-1, *self.means.shape[-1:])\
                 if hasattr(self, "means") else np.array([]),
-            stds = self.stds[idxs].reshape(-1, *self.stds.shape[-2:])\
+            stds=self.stds[idxs].reshape(-1, *self.stds.shape[-2:])\
                 if hasattr(self, "stds") else np.array([]),
-            logps = self.logps[idxs].flatten() if policy_sample else np.array([]),
-            robot_states = self.robot_states[idxs]\
+            logps=self.logps[idxs].flatten() if policy_sample else np.array([]),
+            robot_states=self.robot_states[idxs]\
                 .reshape(-1, self.robot_states.shape[-1])\
                 if hasattr(self, "robot_states") else np.array([]),
         )

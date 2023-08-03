@@ -22,7 +22,7 @@ def worker(args, env, cmd):
     elif cmd == "reset_robot_pos":
         return env.reset_robot_pos()
     elif cmd == "pos_behind_box":
-        return env.pos_behind_box()
+        return env.pos_behind_box(**args)
     elif cmd == "robot_state":
         return env.robot_state()
     elif cmd == "get_obs":
@@ -133,7 +133,7 @@ class ParallelBoxPushingBinEnv:
     def reset_robot_pos(self):
         out = self.execute.map(worker, self.blank, self.envs, self.reset_robot_cmds)
 
-    def pos_behind_box(self):
+    def pos_behind_box(self, **args):
         return list(
-            self.execute.map(worker, self.blank, self.envs, self.pos_behind_box_cmds)
+            self.execute.map(worker, args, self.blank, self.envs, self.pos_behind_box_cmds)
         )

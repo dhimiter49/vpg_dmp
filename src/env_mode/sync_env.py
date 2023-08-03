@@ -39,8 +39,13 @@ class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
     def robot_state(self):
         return np.array(self.call(name="robot_state", batch=False))
 
-    def pos_behind_box(self):
-        return self.call(name="pos_behind_box", batch=False)
+    def pos_behind_box(self, pos=None, total_pos=1):
+        return np.array(self.call(
+            name="pos_behind_box",
+            batch=True,
+            pos=pos,
+            total_pos=total_pos,
+        ))
 
     def get_obs(self):
         return np.array(self.call(name="get_obs", batch=False))
