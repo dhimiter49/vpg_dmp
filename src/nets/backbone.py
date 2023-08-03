@@ -178,13 +178,39 @@ class Encoder(nn.Module):
         return tuple(feat)
 
 
+class DenseNetFixed(nn.Module):
+    def __init__(self, freeze, no_depth, num_positions=3, obs_size=224):
+        super(DenseNetFixed, self).__init__()
+        self.no_depth = no_depth
+        net = densenet121(DenseNet121_Weights.DEFAULT)
+        if freeze:
+            for param in net.features.parameters():
+               param.requires_grad = False
+        self.enc = net.features
+        if not self.no_depth:
+            self.depth_enc = copy.deeepcopy(net.features)
+        n_features = 1024 if self.no_depth else 2048
+        n_features *= (obs_size // 32)**2
+        self.classifier = nn.Sequential(*[
+            nn.Linear(n_features, num_positions),
+            nn.Softmax(),
+        ])
+
+    def forward(self, rgb, depth):
+        x = self.enc(rgb)
+        if not self.no_depth:
+            x = torch.cat([x, self.depth_enc(depth)], dim=1)
+        x = x.view((rgb.shape[0], -1))
+        return self.classifier(x)
+
+
 class DenseNetFeatures(nn.Module):
     def __init__(self, freeze):
         super(DenseNetFeatures, self).__init__()
         net = densenet121(DenseNet121_Weights.DEFAULT)
         if freeze:
-            for p in net.features.parameters():
-               p.requires_grad = False
+            for param in net.features.parameters():
+               param.requires_grad = False
         self.feat = nn.Sequential(*[
             net.features[:2],
             net.features[2:4],

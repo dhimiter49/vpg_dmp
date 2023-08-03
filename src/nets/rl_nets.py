@@ -8,7 +8,12 @@ from torch.distributions.independent import Independent
 
 import nets.utils as utils
 from .backbone import (
-    UNet, DenseNetUNet, DenseNetUpsample, DenseNetFeatures, DoubleCriticWrapper
+    UNet,
+    DenseNetUNet,
+    DenseNetUpsample,
+    DenseNetFeatures,
+    DoubleCriticWrapper,
+    DenseNetFixed,
 )
 
 
@@ -53,6 +58,9 @@ class VPGCritic(nn.Module):
             model, backbone_params["n_channels"] = UNet, 3
         elif model_name == "unet_densenet_enc":
             model = DenseNetUNet
+        elif model_name == "densenet_fixed":
+            model = DenseNetFixed
+            backbone_params["obs_size"] = obs_size
         elif model_name == "densenet":
             model, backbone_params["input_size"] = DenseNetUpsample, obs_size
         elif model_name == "double":
@@ -206,6 +214,39 @@ class DoubleVPG_DMPCritic(VPG_DMPCritic):
 
         return output.view((self.n_primitives, 1, batch,) + rgb.shape[2:]),\
                output_.view((self.n_primitives, 1, batch,) + rgb.shape[2:])
+
+
+class VPGFixedPosition_DMPCritic(VPG_DMPCritic):
+    def __init__(
+        self,
+        n_orientations: int = 1,
+        obs_size: int = 144,
+        push_only: bool = True,
+        grasp_only: bool = False,
+        no_depth: bool = True,
+        backbone_params: dict = {},
+        device: torch.device = torch.device("cpu"),
+    ):
+        self.num_positions = backbone_params["num_positions"]
+        super().__init__(
+            n_orientations, obs_size,
+            push_only, grasp_only, no_depth,
+            backbone_params,
+            device
+        )
+
+    def forward(self, rgb, depth, *args):
+        batch = rgb.shape[0]
+        output = torch.empty(
+            (self.n_primitives, batch, self.num_positions), dtype=torch.float
+        ).to(device=self.device)
+
+        if not self.grasp_only:
+            output[0] = self.push_critic(rgb, depth).squeeze(1)
+        if not self.push_only:
+            output[self.n_primitives - 1] = self.grasp_critic(rgb, depth).squeeze(1)
+
+        return output.view((self.n_primitives, 1, batch, self.num_positions, 1))
 
 
 class PixelPolicy(VPG_DMPCritic):
