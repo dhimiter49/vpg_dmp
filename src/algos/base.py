@@ -35,7 +35,7 @@ class BaseRLAlgo:
             config["training"]["test_iter"]
         self.obs_size = config["training"]["obs_size"]  # width = height of img obs
         self.batch_size = config["training"]["batch_size"]
-        self.buffer_size= config["training"]["buffer_size"]
+        self.buffer_size = config["training"]["buffer_size"]
         self.device = torch.device(
             "cuda"
             if (config["training"]["cuda"] and torch.cuda.is_available())
@@ -103,11 +103,13 @@ class BaseRLAlgo:
             self.critic_loss.to(device=self.device)
             self.critic_update_freq = config["training"]["update_freq"]
         self.curr_step = 0
-        self.update_freq = lambda : (self.curr_step + 1) % self.critic_update_freq == 0
+        self.update_freq = lambda: (self.curr_step + 1) % self.critic_update_freq == 0
 
         actions = []
-        actions.append("push") if not self.grasp_only else None
-        actions.append("grasp") if not self.push_only else None
+        if not self.grasp_only:
+            actions.append("push")
+        if not self.push_only:
+            actions.append("grasp")
         self.actions = np.array(actions)
         self.eps = config["algo"]["epsilon"]
         self.init_eps = config["algo"]["epsilon"]
@@ -196,7 +198,8 @@ class BaseRLAlgo:
                 track.track_module_weights(self.writer, self.policy, self.curr_step)
 
             if done.sum() > 0:  # one of the env is over, reset all
-                self.save_model(epoch, traj_ret.mean()) if test else None
+                if test:
+                    self.save_model(epoch, traj_ret.mean())
                 (
                     self.init_pos_heatmap,
                     self.init_pos_heatmap_,
@@ -220,7 +223,8 @@ class BaseRLAlgo:
                 traj_rets = {} if not test else traj_rets
                 self.env.reset()
                 obs = self.get_rgbd_obs()  # rgb, depth, (nopad_rgb, nopad_depth)
-                self.writer.add_image("img/obs", obs[0][0]) if epoch == 0 else None
+                if epoch == 0:
+                    self.writer.add_image("img/obs", obs[0][0])
                 epoch += self.num_envs
                 if self.eps_decay:
                     self.eps = max(self.init_eps * np.power(0.9998, self.epochs), 0.1)

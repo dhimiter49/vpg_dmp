@@ -8,11 +8,11 @@ INTRINSIC_REWARD_THRESHOLD = 160
 def critic_decision(heatmap, mode="max"):
     if mode == "max":
         return int(torch.argmax(heatmap))
-    elif mode == "softmax_categorical":
+    if mode == "softmax_categorical":
         return int(torch.distributions.categorical.Categorical(
             nn.functional.softmax(heatmap.flatten())
         ).sample())
-    elif mode == "categorical":
+    if mode == "categorical":
         return int(torch.distributions.categorical.Categorical(
             heatmap.flatten()
         ).sample())
@@ -64,6 +64,17 @@ def get_td_error(ret, pred_ret, gamma, terminal):
 
 
 def get_gae(ret, pred_ret, gamma, _lambda, dones):
+    """
+    Generalized advantage function. TD-error over the whole trajectory weighted by
+    costant lambda.
+
+    Args:
+        ret (torch.tensor): rewards
+        pred_ret (torch.tensor): predicted reward (value function evaluation)
+        gamm (float): dicount
+        _lambda (torch.tensor): costant to weight earlier states more
+        dones (torch.tensor): if state is done state
+    """
     terminal = 1 - dones
     gae = get_td_error(ret, pred_ret, gamma, terminal)
     for i in reversed(range(len(gae) - 1)):
@@ -137,7 +148,7 @@ def get_prob_at_pos(val_heatmap, pos):
     assert len(val_heatmap) == len(pos)
     pixel_pos_prob = torch.empty(len(pos)).to(device=val_heatmap.device)
     for i, h in enumerate(val_heatmap):
-        if len(pos.shape) == 2:
+        if pos.shape[-1] >= 2:
             pixel_pos_prob[i] = h[0, 0, int(pos[i, 0]), int(pos[i, 1])]
         else:
             pixel_pos_prob[i] = h[0, 0, int(pos[i])]
