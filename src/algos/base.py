@@ -9,7 +9,7 @@ from tqdm import tqdm
 from buffer import ReplayBuffer
 import nets.rl_nets as nets
 import env_mode
-from utils import plot, rl_func, indexing, track
+from utils import rl_func, indexing, track
 
 
 class BaseRLAlgo:
@@ -208,8 +208,8 @@ class BaseRLAlgo:
                     self.writer,
                     traj_rets,
                     traj_ret.mean() if not test else traj_ret.sum() / self.test_iter,
-                    self.curr_step - traj_begin if not test else\
-                        (self.curr_step - traj_begin) * self.num_envs / self.test_iter,
+                    (self.curr_step - traj_begin if not test else
+                        (self.curr_step - traj_begin) * self.num_envs / self.test_iter),
                     self.init_pos_heatmap, self.init_pos_heatmap_, self.avg_heatmap,
                     epoch if not test else init_idx,
                     alias, -(self.test_iter // -self.num_envs) if test else 1,
@@ -351,8 +351,9 @@ class BaseRLAlgo:
             p += (depth[0, 0, p[0], p[1]].item(),)  # add depth to pos
             u, d, l, r = indexing.get_neigh(p, self.pos_neigh , self.obs_size)
             pred_ret.append(
-                h[:, :, u:d, l:r].detach().cpu().numpy()\
-                    .reshape(self.pos_neigh, self.pos_neigh)
+                h[:, :, u:d, l:r].detach().cpu().numpy().reshape(
+                    self.pos_neigh, self.pos_neigh
+                )
             )
             pos.append(p)
             orient_idx.append(o)
@@ -405,15 +406,15 @@ class BaseRLAlgo:
         loss_replay_info = {}
         if len(samples) > 0:
             loss_replay_info = self.backprop(
-                torch.from_numpy(samples["rgb"]).to(self.device),
-                torch.from_numpy(samples["depth"]).to(self.device),
-                samples["a_idx"],
-                samples["init_pos"],
-                samples["orient_idx"],
-                torch.from_numpy(samples["ret"]).to(self.device),
-                torch.from_numpy(samples["pixel_pos_ret"]).to(self.device),
-                torch.from_numpy(samples["exp_ret"]).to(self.device),
-                torch.from_numpy(samples["pred_ret"]).to(self.device),
+                rgb=torch.from_numpy(samples["rgb"]).to(self.device),
+                depth=torch.from_numpy(samples["depth"]).to(self.device),
+                a_idx=samples["a_idx"],
+                init_pos=samples["init_pos"],
+                orient_idx=samples["orient_idx"],
+                ret=torch.from_numpy(samples["ret"]).to(self.device),
+                ret_=torch.from_numpy(samples["pixel_pos_ret"]).to(self.device),
+                exp_ret=torch.from_numpy(samples["exp_ret"]).to(self.device),
+                pred_ret=torch.from_numpy(samples["pred_ret"]).to(self.device),
                 actions=torch.from_numpy(samples["actions"]).to(self.device),
                 old_means=torch.from_numpy(samples["means"]).to(self.device),
                 old_stds=torch.from_numpy(samples["stds"]).to(self.device),
@@ -473,9 +474,20 @@ class BaseRLAlgo:
             loss_info["new_pred_ret"] = pred_.cpu().detach().numpy()
         return loss_info
 
-    def make_mask(self, batch, img_size, init_pos, padding=0):
+    def make_mask(self, batch, img_size, init_pos):
+        """
+        Create a mask to extract the pixel positions where the Q-function sampled.
+
+        Args:
+            batch (int): batch size
+            img_size (tuple): tuple of two values for image width and height
+            init_pos (tuple): tuple of the positions slected in image
+
+        Return:
+            (torch.Tensor): torch tensor with shape (batch,) + img_size
+        """
         mask = torch.zeros(batch * img_size[0] * img_size[1]).to(self.device)
-        flat_init_pos = (init_pos[:,0] * img_size[0] + init_pos[:,1]) +\
+        flat_init_pos = (init_pos[:, 0] * img_size[0] + init_pos[:, 1]) +\
             (np.arange(init_pos.shape[0]) * img_size[0] * img_size[1])  # batch prefix
         mask[flat_init_pos] = 1
         mask = mask.reshape((batch,) + img_size)

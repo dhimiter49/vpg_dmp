@@ -3,9 +3,9 @@ import torch
 import numpy as np
 
 import nets.rl_nets as nets
-from algos.base import BaseRLAlgo
+from utils import plot, rl_func, indexing
 from projections import MAP_TR_LAYER
-from utils import plot, rl_func, indexing, track
+from algos.base import BaseRLAlgo
 
 
 class VPG_DMPAlgo(BaseRLAlgo):
@@ -35,14 +35,13 @@ class VPG_DMPAlgo(BaseRLAlgo):
                 robot_state_dim=robot_state_dim,
             )
         self.use_env_obs = config["policy"]["use_env_obs"]
-        obs_space = self.env.observation_space.shape[-1] - 1  # remove time (no replan)
+        self.obs_space = self.env.observation_space.shape[-1] - 1  # remove time (no replan)
         self.policy = nets.GaussianPolicy(
             mlp_config=config["policy"]["mlp_config"],
             obs_dim=3 * self.obs_size ** 2,
             weight_vec_dim=self.action_space,
             backbone_params=config["policy"]["backbone_params"],
-            env_obs=obs_space\
-                if self.use_env_obs else None,
+            env_obs=self.obs_space if self.use_env_obs else None,
             robot_state_config=config["policy"]["robot_state_config"],
             robot_state_dim=robot_state_dim,
             device=self.device,
@@ -127,8 +126,9 @@ class VPG_DMPAlgo(BaseRLAlgo):
         if self.policy_cam != "rgbd_crop":
             pol_obs = self.get_policy_obs()
 
-        robot_state = torch.from_numpy(self.env.robot_state())\
-            .to(self.device, dtype=torch.float)
+        robot_state = torch.from_numpy(self.env.robot_state()).to(
+            self.device, dtype=torch.float
+        )
         with torch.no_grad():
             weight_vec, logp_weight_vec, mean, std = self.policy(
                 pol_obs, robot_state, test=self.testing
@@ -186,13 +186,14 @@ class VPG_DMPAlgo(BaseRLAlgo):
     def backprop(
         self,
         rgb, depth,
-        a_idx, init_pos, orient_idx,
-        ret, _, exp_ret, pred_ret,
+        a_idx, init_pos,
+        ret, exp_ret, pred_ret,
         actions=None, old_means=None, old_stds=None, robot_states=None,
         logp_old=None,
         dones=None,
         pol_obs=None,
         new_pred_ret=False,
+        **_
     ):
         """
         Both critic and policy are update in mini-batches.
@@ -269,6 +270,10 @@ class VPG_DMPAlgo(BaseRLAlgo):
         return loss_info
 
     def project(self, gauss, old_gauss):
+        """
+        Based on old and new Gaussian distribution calculate the trust-region loss
+        the projection and the entropy loss.
+        """
         proj_p = self.projection(self.policy, gauss, old_gauss, self.curr_step)
         entropy_loss = -self.entropy_coeff * self.policy.entropy(proj_p).mean()
         trust_region_loss = self.projection.get_trust_region_loss(
@@ -320,9 +325,9 @@ class DoubleVPG_DMPAlgo(VPG_DMPAlgo):
         pred_ret, pos = [], pos[idxs]
         for i in range(self.num_envs):
             p = pos[i]
-            u, d, l, r = indexing.get_neigh(p, self.pos_neigh , self.obs_size)
+            u, d, l, r = indexing.get_neigh(p, self.pos_neigh, self.obs_size)
             pred_ret.append(
-                val_heatmap[val_idxs[i]][i, 0, 0, u:d, l:r].detach().cpu().numpy()\
+                val_heatmap[val_idxs[i]][i, 0, 0, u:d, l:r].detach().cpu().numpy()
                     .reshape(self.pos_neigh, self.pos_neigh)
             )
         return pos, a_idx[idxs], orient_idx[idxs], np.array(pred_ret)
@@ -336,7 +341,7 @@ class DoubleVPG_DMPAlgo(VPG_DMPAlgo):
     def critic_backprop(
         self,
         rgb, depth,
-        a_idx, orients,
+        a_idx, _,
         exp_ret, mask, old_pred,
         new_pred_ret
     ):
@@ -383,7 +388,7 @@ class TargetVPG_DMPAlgo(DoubleVPG_DMPAlgo):
     def update(self, *args, samples=None):
         info = super().update(args, samples=samples)
         with torch.no_grad():
-            for p, p_target in zip(self.backprop_critic.parameters(),\
+            for p, p_target in zip(self.backprop_critic.parameters(),
                                    self.target_critic.parameters()):
                 p_target.data.mul_(self.polyak)
                 p_target.data.add_((1 - self.polyak) * p.data)
@@ -451,22 +456,22 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
                 self.action_space,
                 algo="vpg_policy_dmp",
                 tr_layer=self.use_tr_layer,
-                pol_env_obs=self.env.observation_space.shape[-1] - 1 \
-                    if self.use_env_obs else None,
+                pol_env_obs=self.obs_space if self.use_env_obs else None,
             )
-        self.update_freq = lambda : (self.curr_step + 1) % self.policy_update_freq == 0
+        self.update_freq = lambda: (self.curr_step + 1) % self.policy_update_freq == 0
 
     def backprop(
         self,
         rgb, depth,
-        a_idx, init_pos, orient_idx,
-        ret, ret_, _, pixel_prob_old,
+        a_idx, init_pos,
+        ret, ret_, pred_ret,
         actions=None, old_means=None, old_stds=None, robot_states=None,
         logp_old=None,
         dones=None,
         pol_obs=None,
-        **args
+        **_
     ):
+        pixel_prob_old = pred_ret
         pix_pol_losses, pix_pol_ent_losses, pol_losses, pol_ent_losses, pol_tr_losses =\
             [0.0], [0.0], [0.0], [0.0], [0.0]
         if (self.curr_step + 1) % self.policy_update_freq == 0:
@@ -475,7 +480,7 @@ class VPG_Policy_DMPAlgo(VPG_DMPAlgo):
             if self.use_tr_layer and self.projection.initial_entropy is None:
                 self.projection.initial_entropy =\
                     self.policy.entropy((old_means, old_stds)).mean()
-            for i in range(self.policy_update_iter):
+            for _ in range(self.policy_update_iter):
                 idxs = np.random.choice(
                     np.arange(self.policy_update_freq * self.num_envs),
                     self.batch_size,
@@ -544,11 +549,12 @@ class VPGFixed_Policy_DMPAlgo(VPG_Policy_DMPAlgo):
             critic_name="VPGFixedPosition_DMPCritic",
         )
         self.num_positions = config["training"]["backbone_params"]["num_positions"]
-        self.buffer.init_positions = np.expand_dims(
-            self.buffer.init_positions[:, :, 0], -1
-        )
+        if not test:
+            self.buffer.init_positions = np.expand_dims(
+                self.buffer.init_positions[:, :, 0], -1
+            )
 
-    def get_action(self, val_heatmap, depth):
+    def get_action(self, val_heatmap, _):
         pred_ret, pos, a_idx, orient_idx = [], [], [], []
         val_heatmap = val_heatmap.squeeze(-1)
         for h in val_heatmap:

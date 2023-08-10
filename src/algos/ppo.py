@@ -3,9 +3,9 @@ import torch.nn.functional as F
 import numpy as np
 
 import nets.rl_nets as nets
-from algos.base import BaseRLAlgo
 from projections import MAP_TR_LAYER
-from utils import plot, rl_func, indexing, track
+from utils import plot, rl_func, indexing
+from algos.base import BaseRLAlgo
 
 
 class PPOAlgo(BaseRLAlgo):
@@ -30,14 +30,13 @@ class PPOAlgo(BaseRLAlgo):
         robot_state_dim = len(self.env.robot_state()[0].flatten())\
             if config["policy"]["robot_state_config"]["fusion_method"] else None
         self.use_env_obs = config["policy"]["use_env_obs"]
-        obs_space = self.env.observation_space.shape[-1]
+        self.obs_space = self.env.observation_space.shape[-1]
         self.policy = nets.GaussianPolicy(
             mlp_config=config["policy"]["mlp_config"],
             obs_dim=3 * self.obs_size ** 2,
             weight_vec_dim=self.action_space,
             backbone_params=config["policy"]["backbone_params"],
-            env_obs=obs_space\
-                if self.use_env_obs else None,
+            env_obs=self.obs_space if self.use_env_obs else None,
             robot_state_config=config["policy"]["robot_state_config"],
             robot_state_dim=robot_state_dim,
             device=self.device,
@@ -60,8 +59,8 @@ class PPOAlgo(BaseRLAlgo):
                     self.policy_opt, **config["policy"]["lr_scheduler"]
             )
             self.policy_update_freq = config["policy"]["update_freq"]
-            self.update_freq = lambda : (
-                (self.curr_step + 1) % self.critic_update_freq == 0 or\
+            self.update_freq = lambda: (
+                (self.curr_step + 1) % self.critic_update_freq == 0 or
                 (self.curr_step + 1) % self.policy_update_freq == 0
             )
             self.buffer.policy_traj_len = self.policy_update_freq
@@ -76,10 +75,10 @@ class PPOAlgo(BaseRLAlgo):
                 algo="vpg_dmp",
                 tr_layer=self.use_tr_layer,
                 robot_state_dim=robot_state_dim,
-                pol_env_obs=obs_space if self.use_env_obs else None,
+                pol_env_obs=self.obs_space if self.use_env_obs else None,
                 traj_steps=self.traj_steps,
             )
-        self.update_freq = lambda : (self.curr_step + 1) % self.policy_update_freq == 0
+        self.update_freq = lambda: (self.curr_step + 1) % self.policy_update_freq == 0
 
     def get_policy_obs(self, pos=None):
         """
@@ -97,13 +96,14 @@ class PPOAlgo(BaseRLAlgo):
             camera_name="rgbd" if self.policy_cam == "rgbd_crop" else self.policy_cam
         ).copy())
         rgb = indexing.crop_upsample(rgb, pos, self.obs_size) if pos is not None else rgb
-        plot.show_image(rgb[0]) if self.plot else None
+        if self.plot:
+            plot.show_image(rgb[0])
 
         rgb = (rgb / 255).to(self.device, dtype=torch.float)
         rgb = rgb.permute(0, 3, 1, 2)
         return rgb
 
-    def traj_step(self, init_pos, *args):
+    def traj_step(self, init_pos, *_):
         """
         In order to run a step with PPO:
             - first find the world position where the suggested pixel is
@@ -127,14 +127,15 @@ class PPOAlgo(BaseRLAlgo):
             pol_obs = self.get_policy_obs()
 
         info_ = {
-            "logp": [], "pol_obs": [], "action": [], "robot_state": [], "std":[],
+            "logp": [], "pol_obs": [], "action": [], "robot_state": [], "std": [],
             "reward_info": []
         }
         if self.use_tr_layer:
             info_["mean"] = []
         for _ in range(self.traj_steps):
-            robot_state = torch.from_numpy(self.env.robot_state())\
-                .to(self.device, dtype=torch.float)
+            robot_state = torch.from_numpy(self.env.robot_state()).to(
+                self.device, dtype=torch.float
+            )
             pol_obs = self.get_policy_obs()
             with torch.no_grad():
                 weight_vec, logp_weight_vec, mean, std = self.policy(
@@ -194,14 +195,15 @@ class PPOAlgo(BaseRLAlgo):
     def backprop(
         self,
         rgb, depth,
-        a_idx, init_pos, orient_idx,
-        ret, ret_, _, pixel_prob_old,
+        init_pos,
+        ret, ret_, pred_ret,
         actions=None, old_means=None, old_stds=None, robot_states=None,
         logp_old=None,
         dones=None,
         pol_obs=None,
-        **args
+        **_
     ):
+        pixel_prob_old = pred_ret
         pix_pol_losses, pix_pol_ent_losses, pol_losses, pol_ent_losses, pol_tr_losses =\
             [0.0], [0.0], [0.0], [0.0], [0.0]
         if (self.curr_step + 1) % self.policy_update_freq == 0:
@@ -210,7 +212,7 @@ class PPOAlgo(BaseRLAlgo):
             if self.use_tr_layer and self.projection.initial_entropy is None:
                 self.projection.initial_entropy =\
                     self.policy.entropy((old_means, old_stds)).mean()
-            for i in range(self.policy_update_iter):
+            for _ in range(self.policy_update_iter):
                 idxs = np.random.choice(
                     np.arange(self.policy_update_freq * self.num_envs * self.traj_steps),
                     self.batch_size,

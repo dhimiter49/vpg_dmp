@@ -134,9 +134,9 @@ class VPGAlgo(BaseRLAlgo):
         self,
         rgb, depth,
         a_idx, init_pos, orient_idx,
-        ret, exp_ret, pred_ret,
+        exp_ret, pred_ret,
         new_pred_ret=False,
-        **args,
+        **_
     ):
         """
         Backpropagation for VPG involves:
