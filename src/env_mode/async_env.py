@@ -1,7 +1,6 @@
+from typing import Optional, Union
 import gym
-import fancy_gym
 import numpy as np
-from typing import Any, List, Sequence, Optional, Union
 from gym.error import AlreadyPendingCallError
 
 
@@ -19,12 +18,11 @@ class AsyncBoxPushingBinEnv(gym.vector.AsyncVectorEnv):
                 f"for a pending call to `{self._state.value}` to complete.",
                 self._state.value,
             )
-
         batch_of_args = kwargs.pop("batch")
         args_, kwargs_ = args, kwargs.copy()
         for i, pipe in enumerate(self.parent_pipes):
             if batch_of_args:
-                args_ = tuple([a_[i] for a_ in args])
+                args_ = (a_[i] for a_ in args)
                 kwargs_ = dict([(k, v[i]) for k, v in kwargs.items()])
             pipe.send(("_call", (name, args_, kwargs_)))
         self._state = gym.vector.async_vector_env.AsyncState.WAITING_CALL
@@ -52,7 +50,7 @@ class AsyncBoxPushingBinEnv(gym.vector.AsyncVectorEnv):
     def pos_behind_box(self, pos=None, total_pos=1):
         return np.array(self.call(
             name="pos_behind_box",
-            batch=False if pos is None else True,
+            batch=pos is not None,
             pos=pos,
             total_pos=total_pos,
         ))

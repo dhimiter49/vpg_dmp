@@ -1,8 +1,6 @@
 import fancy_gym
 import numpy as np
-from typing import List, Sequence, Optional, Union
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.utils import set_random_seed
 
 

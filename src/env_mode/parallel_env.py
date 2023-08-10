@@ -1,36 +1,31 @@
 import os
-import numpy as np
-import fancy_gym
 from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
 
 def worker(args, env, cmd):
-    if cmd == "step":
-       return env.step(args)
-    elif cmd == "reset":
-        return env.reset()
-    elif cmd == "reset_mp":
-        return env.reset_mp()
-    elif cmd == "close":
-        return env.close()
-    elif cmd == "img_to_world":
-        return env.img_to_world(**args)
-    elif cmd == "num_boxes_in":
-        return env.num_boxes_in()
-    elif cmd == "set_tcp_pos":
-        return env.set_tcp_pos(**args)
-    elif cmd == "reset_robot_pos":
-        return env.reset_robot_pos()
-    elif cmd == "pos_behind_box":
-        return env.pos_behind_box(**args)
-    elif cmd == "robot_state":
-        return env.robot_state()
-    elif cmd == "get_obs":
-        return env.get_obs()
+    commands = {
+        "step": env.step,
+        "reset": env.reset,
+        "reset_mp": env.reset_mp,
+        "close": env.close,
+        "img_to_world": env.img_to_world,
+        "num_boxes_in": env.num_boxes_in,
+        "set_tcp_pos": env.set_tcp_pos,
+        "reset_robot_pos": env.reset_robot_pos,
+        "pos_behind_box": env.pos_behind_box,
+        "robot_state": env.robot_state,
+        "get_obs": env.get_obs
+    }
+    if args is None:
+        return commands[cmd]()
+    if isinstance(args, dict):
+        return commands[cmd](**args)
+    return commands[cmd](args)
 
 
 class ParallelBoxPushingBinEnv:
-    def __init__(self, env_fns, seed=0, **env_kwargs):
+    def __init__(self, env_fns):
 
         self.num_envs = len(env_fns)
         self.num_workers = min(self.num_envs, os.cpu_count() - 1)
@@ -58,7 +53,7 @@ class ParallelBoxPushingBinEnv:
         out = list(out)
         obs = np.empty((self.num_envs, out[0][0].shape[0]))
         ret, done, info = [], [], {}
-        info_keys = [key for key in out[0][3].keys()]
+        info_keys = list(out[0][3].keys())
         for k in info_keys:
             info[k] = []
         for i, o in enumerate(out):
@@ -86,7 +81,7 @@ class ParallelBoxPushingBinEnv:
         return np.array(list(out))
 
     def close(self):
-        out = self.execute.map(worker, self.blank, self.envs, self.close_cmds)
+        self.execute.map(worker, self.blank, self.envs, self.close_cmds)
 
     def img_to_world(self, pixel_pos, cam=None):
         """
@@ -120,7 +115,8 @@ class ParallelBoxPushingBinEnv:
         """
         args = [{"desired_tcp_pos": p} for p in pos]
         if hard_set is not None:
-            for a in args: a["hard_set"] = hard_set
+            for a in args:
+                a["hard_set"] = hard_set
         out = self.execute.map(worker, args, self.envs, self.set_tcp_pos_cmds)
         out = list(out)
         positions, penalties, dist_to_tcp = [], [], []
@@ -131,9 +127,11 @@ class ParallelBoxPushingBinEnv:
         return np.array(positions), np.array(penalties), np.array(dist_to_tcp)
 
     def reset_robot_pos(self):
-        out = self.execute.map(worker, self.blank, self.envs, self.reset_robot_cmds)
+        self.execute.map(worker, self.blank, self.envs, self.reset_robot_cmds)
 
     def pos_behind_box(self, **args):
         return list(
-            self.execute.map(worker, args, self.blank, self.envs, self.pos_behind_box_cmds)
+            self.execute.map(
+                worker, args, self.blank, self.envs, self.pos_behind_box_cmds
+            )
         )

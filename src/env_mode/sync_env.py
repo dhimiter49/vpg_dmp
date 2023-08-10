@@ -1,8 +1,5 @@
 import gym
-import fancy_gym
 import numpy as np
-from typing import Any, List, Sequence, Optional, Union
-from gym.error import AlreadyPendingCallError
 
 
 class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
@@ -20,7 +17,7 @@ class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
         for i, env in enumerate(self.envs):
             function = getattr(env, name)
             if batch_of_args:
-                args_ = tuple([a_[i] for a_ in args])
+                args_ = (a_[i] for a_ in args)
                 kwargs_ = dict([(k, v[i]) for k, v in kwargs.items()])
             if callable(function):
                 results.append(function(*args_, **kwargs_))
@@ -42,7 +39,7 @@ class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
     def pos_behind_box(self, pos=None, total_pos=1):
         return np.array(self.call(
             name="pos_behind_box",
-            batch=False if pos is None else True,
+            batch=pos is not None,
             pos=pos,
             total_pos=total_pos,
         ))
