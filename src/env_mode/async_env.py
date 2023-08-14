@@ -22,7 +22,7 @@ class AsyncBoxPushingBinEnv(gym.vector.AsyncVectorEnv):
         args_, kwargs_ = args, kwargs.copy()
         for i, pipe in enumerate(self.parent_pipes):
             if batch_of_args:
-                args_ = (a_[i] for a_ in args)
+                args_ = tuple([a_[i] for a_ in args])
                 kwargs_ = dict([(k, v[i]) for k, v in kwargs.items()])
             pipe.send(("_call", (name, args_, kwargs_)))
         self._state = gym.vector.async_vector_env.AsyncState.WAITING_CALL

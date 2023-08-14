@@ -200,7 +200,7 @@ class DenseNetFixed(nn.Module):
         x = self.enc(rgb)
         if not self.no_depth:
             x = torch.cat([x, self.depth_enc(depth)], dim=1)
-        x = x.view((rgb.shape[0], -1))
+        x = x.reshape((rgb.shape[0], -1))
         return self.classifier(x)
 
 

@@ -17,7 +17,7 @@ class SyncBoxPushingBinEnv(gym.vector.SyncVectorEnv):
         for i, env in enumerate(self.envs):
             function = getattr(env, name)
             if batch_of_args:
-                args_ = (a_[i] for a_ in args)
+                args_ = tuple([a_[i] for a_ in args])
                 kwargs_ = dict([(k, v[i]) for k, v in kwargs.items()])
             if callable(function):
                 results.append(function(*args_, **kwargs_))
