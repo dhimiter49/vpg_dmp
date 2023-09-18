@@ -258,8 +258,18 @@ class BaseRLAlgo:
         """
         self.update_freq = lambda: False
         self.save_model_freq = np.inf
-        self.policy.load_state_dict(torch.load(self.experiment_dir + "policy.pth"))
-        self.critic.load_state_dict(torch.load(self.experiment_dir + "critic.pth"))
+        self.policy.load_state_dict(
+            torch.load(
+                self.experiment_dir + "policy_best.pth",
+                map_location=self.device
+            )
+        )
+        self.critic.load_state_dict(
+            torch.load(
+                self.experiment_dir + "critic_best.pth",
+                map_location=self.device
+            )
+        )
         self.policy.eval()
         self.critic.eval()
         self.loop(epochs=self.epochs, test=True)
