@@ -151,7 +151,7 @@ class BaseRLAlgo:
             test (bool): specifies to run loop in test mode
         """
         epoch, traj_begin, epochs = init_idx, self.curr_step, init_idx + epochs
-        traj_ret, traj_rets, done = 0.0, {}, np.full(self.num_envs, True)
+        traj_ret, traj_rets, done = np.zeros(self.num_envs), {}, np.ones(self.num_envs)
         pbar = tqdm(total=epochs - epoch, leave=False)
         alias = "test/" if test else "train/"
         _, obs = self.env.reset(), self.get_rgbd_obs()
@@ -214,13 +214,13 @@ class BaseRLAlgo:
                     alias, -(self.test_iter // -self.num_envs) if test else 1,
                     not test or epoch == epochs - self.num_envs,
                 )
+                self.env.reset()
                 if not test and epoch % self.test_freq == 0:
                     self.test_training(epoch)  # test while training
                 pbar.update(self.num_envs)
                 traj_begin = self.curr_step if not test else traj_begin
-                traj_ret = 0.0 if not test else traj_ret
+                traj_ret = np.zeros(self.num_envs) if not test else traj_ret
                 traj_rets = {} if not test else traj_rets
-                self.env.reset()
                 obs = self.get_rgbd_obs()  # rgb, depth, (nopad_rgb, nopad_depth)
                 if epoch == 0:
                     self.writer.add_image("img/obs", obs[0][0])
