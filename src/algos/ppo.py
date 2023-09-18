@@ -87,14 +87,15 @@ class PPOAlgo(BaseRLAlgo):
         using the same observation as the VF and then crop the image around the position
         chosen.
         """
-        if self.use_env_obs:
-            return torch.from_numpy(self.env.get_obs()).to(self.device, dtype=torch.float)
-        rgb = torch.from_numpy(self.env.render(
-            mode="rgb_array",
+        rgb, _ = self.env.render(
+            mode="obs_human",
             width=self.obs_size,
             height=self.obs_size,
             camera_name="rgbd" if self.policy_cam == "rgbd_crop" else self.policy_cam
-        ).copy())
+        )
+        if self.use_env_obs:
+            return torch.from_numpy(self.env.get_obs()).to(self.device, dtype=torch.float)
+        rgb = torch.from_numpy(np.array(rgb))
         rgb = indexing.crop_upsample(rgb, pos, self.obs_size) if pos is not None else rgb
         if self.plot:
             plot.show_image(rgb[0])
@@ -138,13 +139,13 @@ class PPOAlgo(BaseRLAlgo):
             )
             pol_obs = self.get_policy_obs()
             with torch.no_grad():
-                weight_vec, logp_weight_vec, mean, std = self.policy(
+                action, logp_action, mean, std = self.policy(
                     pol_obs, robot_state, test=self.testing
                 )
-            obs, ret, done, info = self.env.step(weight_vec.detach().cpu().numpy())
-            info_["logp"].append(logp_weight_vec.detach().cpu().numpy())
+            obs, ret, done, info = self.env.step(action.detach().cpu().numpy())
+            info_["logp"].append(logp_action.detach().cpu().numpy())
             info_["pol_obs"].append(pol_obs.cpu().numpy())
-            info_["action"].append(weight_vec.detach().cpu().numpy())
+            info_["action"].append(action.detach().cpu().numpy())
             info_["robot_state"].append(robot_state.cpu().numpy())
             if self.use_tr_layer:
                 info_["mean"].append(mean.detach().cpu().numpy())
