@@ -158,13 +158,16 @@ class BaseRLAlgo:
         while epoch < epochs:
             # Take a step in the env
             rgb, depth = obs[:2]
-            with torch.no_grad():
-                val_heatmap = self.process_heatmaps(self.critic(rgb, depth))
+            self.critic_forward(rgb, depth)
 
             init_pos, a_idx, orient_idx, pred_ret = self.get_action(val_heatmap, obs[-1])
             obs_, ret, done, info = self.traj_step(init_pos, a_idx, orient_idx, obs[-1])
             next_pred_ret = self.get_next_pred(obs_)
-            exp_ret = ret + self.discount * next_pred_ret
+            if not hasattr(self, "train_critic") or self.train_critic:
+                # r_t + gamma * V_{t+1}
+                exp_ret = ret + self.discount * next_pred_ret
+            else:
+                exp_ret = ret
             pixel_pos_ret = rl_func.pixel_pos_ret(info["reward_info"])  # pixel-policy ret
 
             # Update for next iteration
@@ -306,6 +309,20 @@ class BaseRLAlgo:
         depth = depth.permute(0, 3, 1, 2)
 
         return rgb, depth
+
+    def critic_forward(self, rgb, depth):
+        """
+        Run critic forward pass during trial (exploration). In case that config specs
+        don't require training critic, an dummy tensor is returned.
+
+        Args:
+            rgb (torch.tensor): rgb observation
+            depth (torch.tensor): depth observation
+        """
+        if not hasattr(self, "train_critic") or self.train_critic:
+            with torch.no_grad():
+                return self.process_heatmaps(self.critic(rgb, depth))
+        return torch.zeros(self.num_envs, 1, 1, self.obs_size, self.obs_size)
 
     def process_heatmaps(self, heatmaps):
         """
