@@ -158,7 +158,7 @@ class BaseRLAlgo:
         while epoch < epochs:
             # Take a step in the env
             rgb, depth = obs[:2]
-            self.critic_forward(rgb, depth)
+            val_heatmap = self.critic_forward(rgb, depth)
 
             init_pos, a_idx, orient_idx, pred_ret = self.get_action(val_heatmap, obs[-1])
             obs_, ret, done, info = self.traj_step(init_pos, a_idx, orient_idx, obs[-1])
