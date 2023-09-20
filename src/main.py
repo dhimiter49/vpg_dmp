@@ -52,6 +52,9 @@ def dir_setup(dir_name, config_path):
         experiment_dir = "experiments/" + config_name + "_" + current_time
     buffer_dir = experiment_dir + "/buffer/"
 
+    # directory for cluster
+    # buffer_dir =  "/scratch/" + config_name + "_" + current_time + "/buffer/"
+
     Path(experiment_dir).mkdir(parents=True, exist_ok=True)
     Path(buffer_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(config_path, experiment_dir / Path(config_path.split("/")[1]))
