@@ -287,26 +287,34 @@ class BaseRLAlgo:
             (torch.tensor): scaled down and padded colour obs of size (b, c, w, h)
             (torch.tensor): scaled down and padded depth obs of size (b, c, w, h)
         """
-        rgb = torch.from_numpy(self.env.render(
-            mode="rgb_array",
-            width=self.obs_size,
-            height=self.obs_size,
-            camera_name="rgbd"
-        ).copy())
-        depth = torch.from_numpy(self.env.render(
-            mode="depth_array",
-            width=self.obs_size,
-            height=self.obs_size,
-            camera_name="rgbd"
-        ).copy())
+        if not hasattr(self, "train_critic") or self.train_critic:
+            rgb = torch.from_numpy(self.env.render(
+                mode="rgb_array",
+                width=self.obs_size,
+                height=self.obs_size,
+                camera_name="rgbd"
+            ).copy())
+            depth = torch.from_numpy(self.env.render(
+                mode="depth_array",
+                width=self.obs_size,
+                height=self.obs_size,
+                camera_name="rgbd"
+            ).copy())
 
-        # Scale rgb, add batch dim, set type and device
-        rgb = (rgb / 255).to(self.device, dtype=torch.float)
-        depth = (depth.unsqueeze(-1)).to(self.device, dtype=torch.float)
+            # Scale rgb, add batch dim, set type and device
+            rgb = (rgb / 255).to(self.device, dtype=torch.float)
+            depth = (depth.unsqueeze(-1)).to(self.device, dtype=torch.float)
 
-        # (batch, channels, w, h)
-        rgb = rgb.permute(0, 3, 1, 2)
-        depth = depth.permute(0, 3, 1, 2)
+            # (batch, channels, w, h)
+            rgb = rgb.permute(0, 3, 1, 2)
+            depth = depth.permute(0, 3, 1, 2)
+        else:
+            rgb = torch.zeros(
+                self.num_envs, 3, self.obs_size, self.obs_size, device=self.device
+            )
+            depth = torch.zeros(
+                self.num_envs, 1, self.obs_size, self.obs_size, device=self.device
+            )
 
         return rgb, depth
 
