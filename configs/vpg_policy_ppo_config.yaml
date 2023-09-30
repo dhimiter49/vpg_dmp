@@ -1,7 +1,7 @@
 env:
     name: BoxPushingBinDense1-v0
-    run_mode: async
-    num_envs: 4
+    run_mode: sync
+    num_envs: 10
     seed: 0
     plot: False
 
@@ -37,20 +37,20 @@ training:
     loss: SmoothL1Loss
     position_neighbourhood: 1
     adv_loss: False
-    batch_size: 32
+    batch_size: 128
     obs_size: 224
-    buffer_size: 10000
+    buffer_size: 200
     cuda: True
     save_model_freq: 10
-    test_freq: 200
-    test_iter: 30
+    test_freq: 2
+    test_iter: 10
     fix_position: [156, 159]
-    train_critic: True
-    optimal_critic: False
+    train_critic: False
+    optimal_critic: True
 
 policy:
     mlp_config:
-        hidden_dims: [64, 16]
+        hidden_dims: [64, 128, 128, 64]
         weight_init:
             name: normal
             scale: 0.0001
@@ -65,7 +65,7 @@ policy:
     backbone_params:
         model: densenet
         freeze: True
-    use_env_obs: False
+    use_env_obs: True
     robot_state_config:
         fusion_method:
         backbone_config:
@@ -77,8 +77,8 @@ policy:
             normalizer_kwargs:
                 prob: 0.4
             activation: relu
-    update_iter: 10
-    update_freq: 10
+    update_iter: 16
+    update_freq: 2
     opt: Adam
     opt_params:
         lr: 0.0001
@@ -89,8 +89,8 @@ policy:
         gamma: 0.995
     observation_type: rgbd
     trust_region_layer:
-        name: # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
+        name: wasserstein # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
         params:
-            mean_bound: 0.05
-            cov_bound: 0.00005
-            trust_region_coeff: 25
+            mean_bound: 0.005
+            cov_bound: 0.000005
+            trust_region_coeff: 100

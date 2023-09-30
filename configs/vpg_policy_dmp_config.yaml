@@ -1,7 +1,7 @@
 env:
-    name: BoxPushingBinDense1ReplanProDMP-v0
-    run_mode: parallel
-    num_envs: 4
+    name: BoxPushingBinDense1ProMP6-v0
+    run_mode: sync
+    num_envs: 10
     seed: 0
     plot: False
 
@@ -38,18 +38,18 @@ training:
     adv_loss: False
     batch_size: 32
     obs_size: 224
-    buffer_size: 200
+    buffer_size: 1000
     cuda: True
     save_model_freq: 10
     test_freq: 200
-    test_iter: 30
+    test_iter: 50
     fix_position: [156, 159]
     train_critic: False
     optimal_critic: False
 
 policy:
     mlp_config:
-        hidden_dims: [64, 16]
+        hidden_dims: [512, 512]
         weight_init:
             name: normal
             scale: 0.0001
@@ -58,13 +58,13 @@ policy:
             prob: 0.4
         activation: relu
     gaussian:
-        min_std: 0.0000001
-        init_std: 0.05
+        min_std: 0.000001
+        init_std: 0.5
     entropy_coeff: 0.1
     backbone_params:
         model: densenet
         freeze: True
-    use_env_obs: False
+    use_env_obs: True
     robot_state_config:
         fusion_method:
         backbone_config:
@@ -88,8 +88,8 @@ policy:
         gamma: 0.995
     observation_type: rgbd
     trust_region_layer:
-        name: # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
+        name: wasserstein # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
         params:
             mean_bound: 0.05
             cov_bound: 0.00005
-            trust_region_coeff: 25
+            trust_region_coeff: 100

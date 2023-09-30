@@ -1,6 +1,6 @@
 env:
     name: BoxPushingBinDense1ProMP6-v0
-    run_mode: async
+    run_mode: sync
     num_envs: 10
     seed: 0
     plot: False
@@ -18,16 +18,16 @@ algo:
 
 training:
     epochs: 100000
-    update_freq: 20
+    update_freq: 10
     backbone_params:
         model: densenet_fixed
         freeze: True
         no_depth: True
         smooth_size: 11
         num_positions: 3  # number of fixed positions behind boxes
-    critic_opt: Adam
+    critic_opt: SGD
     critic_opt_params:
-        lr: 0.0001
+        lr: 0.01
         # momentum: 0.9
         weight_decay: 0.0002
     lr_scheduler:
@@ -36,7 +36,7 @@ training:
     loss: SmoothL1Loss
     position_neighbourhood: 1
     adv_loss: False
-    batch_size: 32
+    batch_size: 64
     obs_size: 224
     buffer_size: 200
     cuda: True
@@ -49,7 +49,7 @@ training:
 
 policy:
     mlp_config:
-        hidden_dims: [128, 64]
+        hidden_dims: [512, 256]
         weight_init:
             name: normal
             scale: 0.0001
@@ -64,7 +64,7 @@ policy:
     backbone_params:
         model: densenet
         freeze: True
-    use_env_obs: False
+    use_env_obs: True
     robot_state_config:
         fusion_method: late
         backbone_config:
@@ -80,12 +80,12 @@ policy:
     update_freq: 10
     opt: Adam
     opt_params:
-        lr: 0.00005
+        lr: 0.0001
         # momentum: 0.9
         weight_decay: 0.00002
     lr_scheduler:
         name: ExponentialLR
-        gamma: 1.0
+        gamma: 0.995
     observation_type: rgbd
     trust_region_layer:
         name: wasserstein # [ <empty>, base, wasserstein, kl, frobenius, papi, wasserstein_noncomm]
