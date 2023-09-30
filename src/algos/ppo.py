@@ -87,8 +87,8 @@ class PPOAlgo(BaseRLAlgo):
         using the same observation as the VF and then crop the image around the position
         chosen.
         """
-        rgb, _ = self.env.render(
-            mode="obs_human",
+        rgb = self.env.render(
+            mode="rgb_array",
             width=self.obs_size,
             height=self.obs_size,
             camera_name="rgbd" if self.policy_cam == "rgbd_crop" else self.policy_cam
